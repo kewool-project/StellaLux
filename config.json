@@ -1,5 +1,7 @@
 {
+    "CLIENT_ID": "m65puodpp4i8bvfrb27k1mrxr84e3z",
     "REDIRECT_URI": "http://localhost/",
-    "CHANNEL_NAME": [],
-    "TOOLTIP_NAME": "Twitch PiP"
+    "CHANNEL_NAME": ["ayatsunoyuni_stellive", "airikanna_stellive", "arahashitabi_stellive", "nenekomashiro_stellive", "akanelize_stellive", "shirayukihina_stellive"],
+    "TOOLTIP_NAME": "StellaLux",
+    "RELEASE_URL": "https://github.com/kewool-project/StellaLux/releases"
 }

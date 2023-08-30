@@ -39,7 +39,7 @@ async function redactedFunc() {
 function createMainWindow() {
   mainWin = new BrowserWindow({
     width: 560,
-    height: 596,
+    height: 477,
     frame: false,
     webPreferences: {
       contextIsolation: false,
@@ -53,7 +53,7 @@ function createMainWindow() {
       y: 12,
     },
   });
-  mainWin.setMenu(null);
+  // mainWin.setMenu(null);
   mainWin.loadURL(
     "file://" +
       path.join(page_dir, `pages/main/index.html?platform=${process.platform}`),
@@ -217,7 +217,7 @@ app.on("ready", () => {
   createMainWindow();
   createBackground();
   trayIcon =
-    process.platform === "darwin" ? "assets/icon_mac.png" : "assets/icon.png";
+    process.platform === "darwin" ? "assets/icon_mac.png" : "assets/icon2.png";
   tray = new Tray(path.join(page_dir, trayIcon));
   const contextMenu = Menu.buildFromTemplate([
     { label: "Exit", type: "normal", role: "quit" },
@@ -227,6 +227,20 @@ app.on("ready", () => {
 
   tray.on("click", () => {
     if (!mainWin) createMainWindow();
+  });
+
+  let tokenWin = new BrowserWindow({
+    show: false,
+    webPreferences: {
+      contextIsolation: false,
+      nodeIntegration: true,
+    },
+  });
+  tokenWin.loadURL("https://twitch.tv/");
+  tokenWin.webContents.setAudioMuted(true);
+  tokenWin.webContents.on("did-finish-load", () => {
+    tokenWin.close();
+    tokenWin = null;
   });
 });
 
