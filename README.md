@@ -1,4 +1,4 @@
-# IsekaiPiP
+# StellaLux
 
 .env
 ```
