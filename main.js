@@ -409,6 +409,7 @@ ipcMain.on("openChat", (evt, name) => {
 
 ipcMain.on("fixedPIP", (evt, fixed, option) => {
   const pip = BrowserWindow.fromWebContents(evt.sender);
+  pip.resizable = !fixed;
   pip.setIgnoreMouseEvents(fixed, option);
 });
 
