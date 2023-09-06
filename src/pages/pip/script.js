@@ -68,6 +68,7 @@ video.addEventListener("timeupdate", () => {
 const draggable = docId("draggable");
 
 draggable.addEventListener("mousedown", (e) => {
+  store.set(`pip_options.${params.name}.ismove`, true);
   const moveHandler = (e) => {
     ipcRenderer.send("movePIP", {
       name: params.name,
@@ -76,6 +77,7 @@ draggable.addEventListener("mousedown", (e) => {
     });
   };
   const upHandler = () => {
+    store.set(`pip_options.${params.name}.ismove`, false);
     window.removeEventListener("mousemove", moveHandler);
     window.removeEventListener("mouseup", upHandler);
   };
@@ -88,15 +90,17 @@ window.onresize = () => {
     x: window.screenLeft,
     y: window.screenTop,
   };
+  console.log(store.get(`pip_options.${params.name}.ismove`));
 
-  ipcRenderer.send("resizePIP", {
-    name: params.name,
-    size: {
-      width: window.innerWidth,
-      height: window.innerHeight,
-    },
-    location,
-  });
+  if (!store.get(`pip_options.${params.name}.ismove`))
+    ipcRenderer.send("resizePIP", {
+      name: params.name,
+      size: {
+        width: window.innerWidth,
+        height: window.innerHeight,
+      },
+      location,
+    });
 };
 
 let soundTemp = store.get(`pip_options.${params.name}.volume`);
