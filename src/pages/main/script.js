@@ -122,8 +122,12 @@ if (user.profile) {
 const info = ipcRenderer.sendSync("getChannelInfo");
 let diffTimeTemp = {};
 let nameTemp = "";
+let typeTemp = "";
 function detailInfoEvent() {
-  ipcRenderer.send("openNewWindow", `https://www.twitch.tv/${nameTemp}`);
+  if (typeTemp === "stream")
+    ipcRenderer.send("openNewWindow", `https://www.twitch.tv/${nameTemp}`);
+  else if (typeTemp === "space")
+    ipcRenderer.send("openNewWindow", `https://x.com/i/spaces/${nameTemp}`);
 }
 function moreInfoEvent(element) {
   // const detail = ipcRenderer.sendSync("getChannelInfoDetail", e);
@@ -135,14 +139,17 @@ function moreInfoEvent(element) {
     ).src = `https://static-cdn.jtvnw.net/previews-ttv/live_user_${element.name}-380x213.jpg`;
     docQuery(".detail_info_button p").innerText = diffTimeTemp[element.name];
     nameTemp = element.name;
+    typeTemp = "stream";
     docQuery(".detail_info_button").addEventListener("click", detailInfoEvent);
     docQuery(".detail_info_button").className = "detail_info_button is_stream";
   } else if (!element.isStream && element.isSpace) {
     docQuery(".detail_thumnail").src =
       "https://static-cdn.jtvnw.net/ttv-static/404_preview-380x213.jpg";
     docQuery(".detail_info_button p").innerText = "스페이스 진행 중!";
-    nameTemp = element.name;
     docQuery(".detail_info_button").className = "detail_info_button is_space";
+    nameTemp = element.isSpace;
+    typeTemp = "space";
+    docQuery(".detail_info_button").addEventListener("click", detailInfoEvent);
   } else {
     docQuery(".detail_thumnail").src =
       "https://static-cdn.jtvnw.net/ttv-static/404_preview-380x213.jpg";
