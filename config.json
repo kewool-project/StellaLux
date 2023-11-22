@@ -2,6 +2,14 @@
     "CLIENT_ID": "m65puodpp4i8bvfrb27k1mrxr84e3z",
     "REDIRECT_URI": "http://localhost/",
     "CHANNEL_NAME": ["ayatsunoyuni_stellive", "airikanna_stellive", "arahashitabi_stellive", "nenekomashiro_stellive", "akanelize_stellive", "shirayukihina_stellive"],
+    "TWITTER_ID": {
+      "ayatsunoyuni_stellive": "1643000002514661377",
+      "airikanna_stellive": "1602670495446409216",
+      "arahashitabi_stellive": "1664220954871087104",
+      "nenekomashiro_stellive": "1664221736471252994",
+      "akanelize_stellive": "1664221598180847616",
+      "shirayukihina_stellive": "1664220975502876672"
+    },
     "TOOLTIP_NAME": "StellaLux",
     "RELEASE_URL": "https://github.com/kewool-project/StellaLux/releases"
 }

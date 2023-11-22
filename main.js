@@ -11,6 +11,7 @@ const Store = require("electron-store");
 const page_dir = path.join(__dirname, "/src/");
 const clientId = config["CLIENT_ID"];
 const redirectUri = config["REDIRECT_URI"];
+const twitterId = config["TWITTER_ID"];
 const authProvider = new ElectronAuthProvider({
   clientId,
   redirectUri,
@@ -25,7 +26,9 @@ let mainWin;
 let tray;
 let backWin;
 let streamWin = {};
+let spaceWin = {};
 let trayIcon;
+let guideWin;
 
 async function redactedFunc() {
   try {
@@ -53,7 +56,7 @@ function createMainWindow() {
       y: 12,
     },
   });
-  // mainWin.setMenu(null);
+  mainWin.setMenu(null);
   mainWin.loadURL(
     "file://" +
       path.join(page_dir, `pages/main/index.html?platform=${process.platform}`),
@@ -154,6 +157,48 @@ function createChatWin(name) {
   streamWin[name].chat.setVisibleOnAllWorkspaces(true);
 }
 
+function createSpaceWin(url, name) {
+  spaceWin[name] = {};
+  spaceWin[name].pip = new BrowserWindow({
+    width: store.get("space_options")[name].size.width,
+    height: store.get("space_options")[name].size.height,
+    minWidth: 240,
+    minHeight: 135,
+    webPreferences: {
+      contextIsolation: false,
+      nodeIntegration: true,
+    },
+    frame: false,
+    resizable: true,
+    maximizable: false,
+    skipTaskbar: true,
+    x: store.get("space_options")[name].location.x,
+    y: store.get("space_options")[name].location.y,
+    opacity: store.get("space_options")[name].opacity,
+  });
+  spaceWin[name].pip.setAspectRatio(16 / 9);
+  spaceWin[name].pip.setMenu(null);
+  spaceWin[name].pip.loadURL(
+    "file://" +
+      path.join(page_dir, `pages/space/index.html?url=${url}&name=${name}`),
+  );
+  spaceWin[name].pip.setAlwaysOnTop(true, "screen-saver");
+  spaceWin[name].pip.setVisibleOnAllWorkspaces(true);
+}
+
+function createGuideWin() {
+  guideWin = new BrowserWindow({
+    width: 1280,
+    height: 1080,
+    webPreferences: {
+      contextIsolation: false,
+      nodeIntegration: true,
+    },
+    opacity: 1,
+  });
+  guideWin.loadFile(path.join(page_dir, "pages/guide/index.html"));
+}
+
 if (!lock) {
   app.quit();
 } else {
@@ -168,10 +213,12 @@ if (!lock) {
 }
 
 app.on("ready", () => {
-  store.delete("app_start");
+  store.set("app_start", false);
   // store.delete("pip_order"); //test
   // store.delete("auto_start"); //test
   // store.delete("pip_options"); //test
+  // store.delete("space_auto_start"); //test
+  // store.delete("space_options"); //test
   if (!store.get("pip_order")) {
     store.set("pip_order", config["CHANNEL_NAME"]);
     app.setLoginItemSettings({
@@ -195,6 +242,23 @@ app.on("ready", () => {
       store.set(`auto_start.${e}.status`, false);
     });
   }
+  if (!store.get("space_auto_start")) {
+    const order = store.get("pip_order");
+    let spaceAutoStart = {};
+    order.forEach((e) => {
+      spaceAutoStart[e] = {};
+      spaceAutoStart[e].enabled = false;
+      spaceAutoStart[e].closed = false;
+      spaceAutoStart[e].status = false;
+    });
+    store.set("space_auto_start", spaceAutoStart);
+  } else {
+    const order = store.get("pip_order");
+    order.forEach((e) => {
+      store.set(`space_auto_start.${e}.closed`, false);
+      store.set(`space_auto_start.${e}.status`, false);
+    });
+  }
   if (!store.get("pip_options")) {
     const order = store.get("pip_order");
     const { width, height } = screen.getPrimaryDisplay().workAreaSize;
@@ -214,6 +278,26 @@ app.on("ready", () => {
       };
     });
     store.set("pip_options", pip_options);
+  }
+  if (!store.get("space_options")) {
+    const order = store.get("pip_order");
+    const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+    let space_options = {};
+    order.forEach((e) => {
+      space_options[e] = {
+        location: {
+          x: width - 290,
+          y: height - 185,
+        },
+        size: {
+          width: 240,
+          height: 135,
+        },
+        volume: 0.5,
+        opacity: 1,
+      };
+    });
+    store.set("space_options", space_options);
   }
   createMainWindow();
   createBackground();
@@ -295,6 +379,14 @@ ipcMain.on("getChannelInfo", async (evt) => {
       const stream = await apiClient.streams.getStreamByUserId(e.id);
       const follows = await apiClient.channels.getChannelFollowerCount(e);
       const lastStreamDate = await twitch.getLastStreamDate(e.name);
+      let isSpace = null;
+      if (store.get("twitter_csrf_token") && store.get("twitter_auth_token")) {
+        isSpace = await twitch.checkSpace(
+          store.get("twitter_csrf_token"),
+          store.get("twitter_auth_token"),
+          twitterId[e.name],
+        );
+      }
       return {
         name: e.name,
         displayName: e.displayName,
@@ -305,6 +397,7 @@ ipcMain.on("getChannelInfo", async (evt) => {
         lastStreamDate: lastStreamDate,
         isStream: stream ? true : false,
         game: stream?.gameName,
+        isSpace: isSpace,
       };
     }),
   );
@@ -346,7 +439,7 @@ ipcMain.handle("getChannelPoint", async (evt, name) => {
 });
 
 ipcMain.on("getStream", async (evt, name) => {
-  if (streamWin[name]?.pip) {
+  if (streamWin[name]?.pip || store.get("auto_start")[name].status) {
     streamWin[name].pip.focus();
     return;
   }
@@ -354,11 +447,11 @@ ipcMain.on("getStream", async (evt, name) => {
     ? true
     : false;
   if (isStream) {
+    store.set(`auto_start.${name}.status`, true);
     const redacted = (await redactedFunc()).a;
     await twitch.getStream(name, false, redacted).then((res) => {
       createPIPWin(res[0].url, name);
     });
-    store.set(`auto_start.${name}.status`, true);
   }
 });
 
@@ -420,11 +513,35 @@ ipcMain.on("fixedPIP", (evt, fixed, option) => {
 
 ipcMain.on("closePIP", (evt, name) => {
   streamWin[name].pip.close();
+  streamWin[name].pip = null;
   streamWin[name].points.close();
-  if (streamWin[name].chat) streamWin[name].chat.close();
+  streamWin[name].points = null;
+  if (streamWin[name].chat) {
+    streamWin[name].chat.close();
+    streamWin[name].chat = null;
+  }
   streamWin[name] = null;
   store.set(`auto_start.${name}.status`, false);
   store.set(`auto_start.${name}.closed`, true);
+});
+
+ipcMain.on("closeAllPIP", () => {
+  const order = store.get("pip_order");
+  order.forEach((e) => {
+    if (streamWin[e]?.pip) {
+      streamWin[e].pip.close();
+      streamWin[e].pip = null;
+      streamWin[e].points.close();
+      streamWin[e].points = null;
+      if (streamWin[e].chat) {
+        streamWin[e].chat.close();
+        streamWin[e].chat = null;
+      }
+      streamWin[e] = null;
+      store.set(`auto_start.${e}.status`, false);
+      store.set(`auto_start.${e}.closed`, true);
+    }
+  });
 });
 
 ipcMain.on("isStreamOff", async (evt, name) => {
@@ -440,12 +557,159 @@ ipcMain.on("isStreamOffWhileOn", async (evt, name) => {
     : false;
   if (!isStream) {
     streamWin[name].pip.close();
+    streamWin[name].pip = null;
     streamWin[name].points.close();
-    if (streamWin[name].chat) streamWin[name].chat.close();
+    streamWin[name].points = null;
+    if (streamWin[name].chat) {
+      streamWin[name].chat.close();
+      streamWin[name].chat = null;
+    }
     streamWin[name] = null;
     store.set(`auto_start.${name}.status`, false);
     store.set(`auto_start.${name}.closed`, false);
   }
+});
+
+ipcMain.on("openNewWindow", (evt, url) => {
+  shell.openExternal(url);
+});
+
+ipcMain.on("resetPIPSetting", () => {
+  store.delete("pip_options");
+  const order = store.get("pip_order");
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  let pip_options = {};
+  order.forEach((e) => {
+    pip_options[e] = {
+      location: {
+        x: width - 530,
+        y: height - 320,
+      },
+      size: {
+        width: 480,
+        height: 270,
+      },
+      volume: 0.5,
+      opacity: 1,
+    };
+  });
+  store.set("pip_options", pip_options);
+});
+
+ipcMain.on("getSpace", async (evt, name) => {
+  if (spaceWin[name]?.pip || store.get("space_auto_start")[name].status) {
+    spaceWin[name].pip.focus();
+    return;
+  }
+  const spaceId = await twitch.checkSpace(
+    store.get("twitter_csrf_token"),
+    store.get("twitter_auth_token"),
+    twitterId[name],
+  );
+  if (spaceId) {
+    const spaceM3U8 = await twitch.getSpaceM3U8(
+      spaceId,
+      store.get("twitter_csrf_token"),
+      store.get("twitter_auth_token"),
+    );
+    createSpaceWin(spaceM3U8, name);
+    store.set(`space_auto_start.${name}.status`, true);
+  }
+});
+
+ipcMain.on("moveSpace", (evt, arg) => {
+  const currentPostion = spaceWin[arg.name].pip.getPosition();
+  const newPosition = {
+    x: currentPostion[0] + arg.x,
+    y: currentPostion[1] + arg.y,
+  };
+  spaceWin[arg.name].pip.setBounds({
+    x: newPosition.x,
+    y: newPosition.y,
+    width: store.get("space_options")[arg.name].size.width,
+    height: store.get("space_options")[arg.name].size.height,
+  });
+  store.set(`space_options.${arg.name}.location`, newPosition);
+});
+
+ipcMain.on("resizeSpace", (evt, arg) => {
+  store.set(`space_options.${arg.name}.size`, arg.size);
+  store.set(`space_options.${arg.name}.location`, arg.location);
+});
+
+ipcMain.on("changeSpaceOpacity", (evt, name) => {
+  spaceWin[name].pip.setOpacity(store.get(`space_options.${name}.opacity`));
+});
+
+ipcMain.on("closeSpace", (evt, name) => {
+  spaceWin[name].pip.close();
+  spaceWin[name].pip = null;
+  spaceWin[name] = null;
+  store.set(`space_auto_start.${name}.status`, false);
+  store.set(`space_auto_start.${name}.closed`, true);
+});
+
+ipcMain.on("closeAllSpace", () => {
+  const order = store.get("pip_order");
+  order.forEach((e) => {
+    if (spaceWin[e]?.pip) {
+      spaceWin[e].pip.close();
+      spaceWin[e].pip = null;
+      spaceWin[e] = null;
+      store.set(`space_auto_start.${e}.status`, false);
+      store.set(`space_auto_start.${e}.closed`, true);
+    }
+  });
+});
+
+ipcMain.on("isSpaceOff", async (evt, name) => {
+  const isSpace = await twitch.checkSpace(
+    store.get("twitter_csrf_token"),
+    store.get("twitter_auth_token"),
+    twitterId[name],
+  );
+  if (!isSpace) store.set(`space_auto_start.${name}.closed`, false);
+});
+
+ipcMain.on("isSpaceOffWhileOn", async (evt, name) => {
+  const isSpace = await twitch.checkSpace(
+    store.get("twitter_csrf_token"),
+    store.get("twitter_auth_token"),
+    twitterId[name],
+  );
+  if (!isSpace) {
+    spaceWin[name].pip.close();
+    spaceWin[name].pip = null;
+    spaceWin[name] = null;
+    store.set(`space_auto_start.${name}.status`, false);
+    store.set(`space_auto_start.${name}.closed`, false);
+  }
+});
+
+ipcMain.on("resetSpaceSetting", () => {
+  store.delete("space_options");
+  const order = store.get("pip_order");
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  let space_options = {};
+  order.forEach((e) => {
+    space_options[e] = {
+      location: {
+        x: width - 290,
+        y: height - 185,
+      },
+      size: {
+        width: 240,
+        height: 135,
+      },
+      volume: 0.5,
+      opacity: 1,
+    };
+  });
+  store.set("space_options", space_options);
+});
+
+ipcMain.on("openGuide", () => {
+  createGuideWin();
 });
 
 ipcMain.on("app_version", (evt) => {
