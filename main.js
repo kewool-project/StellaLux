@@ -27,6 +27,7 @@ let tray;
 let backWin;
 let streamWin = {};
 let spaceWin = {};
+let chatWin = {};
 let trayIcon;
 let guideWin;
 
@@ -74,6 +75,7 @@ function createBackground() {
       nodeIntegration: true,
     },
   });
+  // backWin.webContents.openDevTools();
 
   backWin.loadFile(path.join(page_dir, "pages/background/index.html"));
 }
@@ -133,12 +135,18 @@ function createPointsWin(name) {
   );
 }
 
-function createChatWin(name) {
-  streamWin[name].chat = new BrowserWindow({
+function createChatWin(name, type) {
+  chatWin[name] = new BrowserWindow({
     x:
-      store.get("pip_options")[name].location.x +
-      store.get("pip_options")[name].size.width,
-    y: store.get("pip_options")[name].location.y,
+      type === "stream"
+        ? store.get("pip_options")[name].location.x +
+          store.get("pip_options")[name].size.width
+        : store.get("space_options")[name].location.x +
+          store.get("space_options")[name].size.width,
+    y:
+      type === "stream"
+        ? store.get("pip_options")[name].location.y
+        : store.get("space_options")[name].location.y,
     width: 350,
     height: store.get("pip_options")[name].size.height,
     webPreferences: {
@@ -149,12 +157,12 @@ function createChatWin(name) {
     maximizable: false,
     skipTaskbar: true,
   });
-  streamWin[name].chat.setMenu(null);
-  streamWin[name].chat.loadURL(
+  chatWin[name].setMenu(null);
+  chatWin[name].loadURL(
     "file://" + path.join(page_dir, `pages/chat/index.html?name=${name}`),
   );
-  streamWin[name].chat.setAlwaysOnTop(true, "screen-saver");
-  streamWin[name].chat.setVisibleOnAllWorkspaces(true);
+  chatWin[name].setAlwaysOnTop(true, "screen-saver");
+  chatWin[name].setVisibleOnAllWorkspaces(true);
 }
 
 function createSpaceWin(url, name) {
@@ -496,13 +504,13 @@ ipcMain.on("changeOpacity", (evt, name) => {
   streamWin[name].pip.setOpacity(store.get(`pip_options.${name}.opacity`));
 });
 
-ipcMain.on("openChat", (evt, name) => {
-  if (streamWin[name].chat) {
-    streamWin[name].chat.close();
-    streamWin[name].chat = null;
+ipcMain.on("openChat", (evt, name, type) => {
+  if (chatWin[name]) {
+    chatWin[name].close();
+    chatWin[name] = null;
     return;
   }
-  createChatWin(name);
+  createChatWin(name, type);
 });
 
 ipcMain.on("fixedPIP", (evt, fixed, option) => {
@@ -516,9 +524,9 @@ ipcMain.on("closePIP", (evt, name) => {
   streamWin[name].pip = null;
   streamWin[name].points.close();
   streamWin[name].points = null;
-  if (streamWin[name].chat) {
-    streamWin[name].chat.close();
-    streamWin[name].chat = null;
+  if (chatWin[name]) {
+    chatWin[name].close();
+    chatWin[name] = null;
   }
   streamWin[name] = null;
   store.set(`auto_start.${name}.status`, false);
@@ -533,9 +541,9 @@ ipcMain.on("closeAllPIP", () => {
       streamWin[e].pip = null;
       streamWin[e].points.close();
       streamWin[e].points = null;
-      if (streamWin[e].chat) {
-        streamWin[e].chat.close();
-        streamWin[e].chat = null;
+      if (chatWin[e]) {
+        chatWin[e].close();
+        chatWin[e] = null;
       }
       streamWin[e] = null;
       store.set(`auto_start.${e}.status`, false);
@@ -560,9 +568,9 @@ ipcMain.on("isStreamOffWhileOn", async (evt, name) => {
     streamWin[name].pip = null;
     streamWin[name].points.close();
     streamWin[name].points = null;
-    if (streamWin[name].chat) {
-      streamWin[name].chat.close();
-      streamWin[name].chat = null;
+    if (chatWin[name]) {
+      chatWin[name].close();
+      chatWin[name] = null;
     }
     streamWin[name] = null;
     store.set(`auto_start.${name}.status`, false);

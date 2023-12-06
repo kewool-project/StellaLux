@@ -270,7 +270,7 @@ docQuery(".control_time .control_thumb").addEventListener("mousedown", (e) => {
 });
 
 docQuery(".control_chat").addEventListener("click", () => {
-  ipcRenderer.send("openChat", params.name);
+  ipcRenderer.send("openChat", params.name, "space");
 });
 
 docQuery(".control_play").addEventListener("click", () => {
@@ -304,3 +304,12 @@ docQuery(".fixed").addEventListener("click", () => {
   docQuery(".panel").removeEventListener("mouseenter", panelMouseEnter);
   docQuery(".panel").removeEventListener("mouseleave", panelMouseLeave);
 });
+
+let durationTemp = video.duration;
+setInterval(() => {
+  if (!video.paused && durationTemp !== video.duration) {
+    durationTemp = video.duration;
+  } else {
+    ipcRenderer.send("isSpaceOffWhileOn", params.name);
+  }
+}, 10000);
