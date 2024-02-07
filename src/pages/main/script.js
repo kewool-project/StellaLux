@@ -107,7 +107,10 @@ let nameTemp = "";
 let typeTemp = "";
 function detailInfoEvent() {
   if (typeTemp === "stream")
-    ipcRenderer.send("openNewWindow", `https://www.twitch.tv/${nameTemp}`);
+    ipcRenderer.send(
+      "openNewWindow",
+      `https://chzzk.naver.com/live/${nameTemp}`,
+    );
   else if (typeTemp === "space")
     ipcRenderer.send("openNewWindow", `https://x.com/i/spaces/${nameTemp}`);
 }
