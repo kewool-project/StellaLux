@@ -33,7 +33,6 @@ if (params.platform === "darwin") {
 docQuery(".detail_background").addEventListener("click", (evt) => {
   if (evt.target.className === "detail_background") {
     docQuery(".detail_background").style.display = "none";
-    docQuery(".detail_info_points span").innerText = "";
     docQuery(".detail_info_button").removeEventListener(
       "click",
       detailInfoEvent,
@@ -102,23 +101,6 @@ docQuery("#setting_reset").addEventListener("click", () => {
   ipcRenderer.send("resetPIPSetting");
 });
 
-const user = ipcRenderer.sendSync("getUserProfile");
-if (user.profile) {
-  docQuery(".header_profile img").src = user.profile;
-  docQuery(".username").href = `https://www.twitch.tv/${user.name}`;
-  docQuery(".username p").innerText = user.name;
-  docQuery(".user_sign").addEventListener("click", () => {
-    ipcRenderer.send("logout");
-  });
-  docQuery(".user_sign p").innerText = "로그아웃";
-} else {
-  docQuery(".header_profile img").src = "../../assets/guest.svg";
-  docQuery(".username p").innerText = "게스트";
-  docQuery(".username img").src = "../../assets/question_mark.svg";
-  docQuery(".user_sign").href = "https://www.twitch.tv/login";
-  docQuery(".user_sign p").innerText = "로그인";
-  docQuery(".user_sign img").src = "../../assets/login.svg";
-}
 const info = ipcRenderer.sendSync("getChannelInfo");
 let diffTimeTemp = {};
 let nameTemp = "";
@@ -134,9 +116,10 @@ function moreInfoEvent(element) {
   const detail_background = docQuery(".detail_background");
   detail_background.style.display = "block";
   if (element.isStream && !element.isSpace) {
-    docQuery(
-      ".detail_thumnail",
-    ).src = `https://static-cdn.jtvnw.net/previews-ttv/live_user_${element.name}-380x213.jpg`;
+    docQuery(".detail_thumnail").src = element.thumbnail.replace(
+      "{type}",
+      "480",
+    );
     docQuery(".detail_info_button p").innerText = diffTimeTemp[element.name];
     nameTemp = element.name;
     typeTemp = "stream";
@@ -179,10 +162,6 @@ function moreInfoEvent(element) {
       store.set(`space_auto_start.${element.name}.enabled`, evt.target.checked);
     },
   );
-  const channelPoint = ipcRenderer.invoke("getChannelPoint", element.name);
-  channelPoint.then((res) => {
-    docQuery(".detail_info_points span").innerText = res;
-  });
 }
 
 info.forEach((element, i) => {

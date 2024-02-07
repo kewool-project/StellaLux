@@ -1,6 +1,66 @@
 const { BrowserWindow } = require("electron");
 const https = require("https");
 
+function getUserById(channelId) {
+  const options = {
+    hostname: "api.chzzk.naver.com",
+    port: 443,
+    path: `/service/v1/channels/${channelId}`,
+    method: "GET",
+  };
+
+  return new Promise((resolve, reject) => {
+    const req = https.request(options, (response) => {
+      let resData = {};
+      resData.statusCode = response.statusCode;
+      resData.body = [];
+      response.on("data", (chunk) => resData.body.push(chunk));
+      response.on("end", () => {
+        resData.body = resData.body.join("");
+
+        if (resData.statusCode !== 200) {
+          reject(new Error(`${resData.statusCode}`));
+        } else {
+          resolve(JSON.parse(resData.body));
+        }
+      });
+    });
+
+    req.on("error", (error) => reject(error));
+    req.end();
+  });
+}
+
+function getLiveById(channelId) {
+  const options = {
+    hostname: "api.chzzk.naver.com",
+    port: 443,
+    path: `/service/v2/channels/${channelId}/live-detail`,
+    method: "GET",
+  };
+
+  return new Promise((resolve, reject) => {
+    const req = https.request(options, (response) => {
+      let resData = {};
+      resData.statusCode = response.statusCode;
+      resData.body = [];
+      response.on("data", (chunk) => resData.body.push(chunk));
+      response.on("end", () => {
+        resData.body = resData.body.join("");
+
+        if (resData.statusCode !== 200) {
+          reject(new Error(`${resData.statusCode}`));
+        } else {
+          resolve(JSON.parse(resData.body));
+        }
+      });
+    });
+
+    req.on("error", (error) => reject(error));
+    req.end();
+  });
+}
+
 const clientId = "kimne78kx3ncx6brgo4mv6wki5h1ko";
 
 function getAccessToken(id, isVod, redacted = {}) {
@@ -110,7 +170,6 @@ function parsePlaylist(playlist) {
   const lines = playlist.split("\n");
   for (let i = 4; i < lines.length; i += 3) {
     parsedPlaylist.push({
-      // eslint-disable-next-line quotes
       quality: lines[i - 2].split('NAME="')[1].split('"')[0],
       resolution:
         lines[i - 1].indexOf("RESOLUTION") !== -1
@@ -132,34 +191,10 @@ function getStream(channel, raw, redacted = {}) {
 }
 
 function getLastStreamDate(channel) {
-  const data = [
-    {
-      operationName: "StreamSchedule",
-      variables: {
-        login: channel,
-        startingWeekday: "MONDAY",
-        utcOffsetMinutes: 540,
-        startAt: "2023-08-20T15:00:00.000Z",
-        endAt: "2023-08-27T14:59:59.059Z",
-      },
-      extensions: {
-        persistedQuery: {
-          version: 1,
-          sha256Hash:
-            "d495cb17a67b6f7a8842e10297e57dcd553ea17fe691db435e39a618fe4699cf",
-        },
-      },
-    },
-  ];
-
   const options = {
-    hostname: "gql.twitch.tv",
+    hostname: "api.chzzk.naver.com",
     port: 443,
-    path: "/gql",
-    method: "POST",
-    headers: {
-      "Client-id": clientId,
-    },
+    path: `/service/v1/channels/${channel}/videos?sortType=LATEST&page=0&size=1`,
   };
 
   return new Promise((resolve, reject) => {
@@ -174,69 +209,12 @@ function getLastStreamDate(channel) {
         if (resData.statusCode !== 200) {
           reject(new Error(`${JSON.parse(data.body).message}`));
         } else {
-          resolve(
-            JSON.parse(resData.body)[0].data.user.lastBroadcast.startedAt,
-          );
+          resolve(JSON.parse(resData.body).content.data[0]?.publishDate ?? 0);
         }
       });
     });
 
     req.on("error", (error) => reject(error));
-    req.write(JSON.stringify(data));
-    req.end();
-  });
-}
-
-function getChannelPoint(channel, redacted = {}) {
-  const data = [
-    {
-      operationName: "ChannelPointsContext",
-      variables: {
-        channelLogin: channel,
-      },
-      extensions: {
-        persistedQuery: {
-          version: 1,
-          sha256Hash:
-            "1530a003a7d374b0380b79db0be0534f30ff46e61cffa2bc0e2468a909fbc024",
-        },
-      },
-    },
-  ];
-
-  const options = {
-    hostname: "gql.twitch.tv",
-    port: 443,
-    path: "/gql",
-    method: "POST",
-    headers: {
-      "Client-id": clientId,
-      ...redacted,
-    },
-  };
-
-  return new Promise((resolve, reject) => {
-    const req = https.request(options, (response) => {
-      let resData = {};
-      resData.statusCode = response.statusCode;
-      resData.body = [];
-      response.on("data", (chunk) => resData.body.push(chunk));
-      response.on("end", () => {
-        resData.body = resData.body.join("");
-
-        if (resData.statusCode !== 200) {
-          reject(new Error(`${JSON.parse(data.body).message}`));
-        } else {
-          resolve(
-            JSON.parse(resData.body)[0].data.community.channel.self
-              .communityPoints.balance,
-          );
-        }
-      });
-    });
-
-    req.on("error", (error) => reject(error));
-    req.write(JSON.stringify(data));
     req.end();
   });
 }
@@ -251,7 +229,7 @@ async function checkSpace(ct0, auth_token, userId) {
   const options = {
     hostname: "twitter.com",
     port: 443,
-    path: `/i/api/fleets/v1/avatar_content?user_ids=${userId}&only_spaces=true`,
+    path: `/i/api/fleets/v2/avatar_content?user_ids=${userId}&only_spaces=true`,
     method: "GET",
     headers: headers,
   };
@@ -392,9 +370,10 @@ async function getSpaceM3U8(id, ct0, auth_token) {
 }
 
 module.exports = {
+  getUserById: getUserById,
+  getLiveById: getLiveById,
   getStream: getStream,
   getLastStreamDate: getLastStreamDate,
-  getChannelPoint: getChannelPoint,
   checkSpace: checkSpace,
   getSpaceM3U8: getSpaceM3U8,
 };
