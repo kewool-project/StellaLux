@@ -27,8 +27,28 @@ hls.on(Hls.Events.MANIFEST_PARSED, () => {
 });
 video.volume = store.get(`pip_options.${params.channelId}.volume`);
 video.addEventListener("loadedmetadata", () => {
-  video.currentTime = video.duration - 3;
+  video.currentTime = video.duration;
 });
+
+hls.on(Hls.Events.ERROR, (event, data) => {
+  if (data.fatal) {
+    switch (data.type) {
+      case Hls.ErrorTypes.NETWORK_ERROR:
+        console.error("Network error encountered", data);
+        hls.startLoad();
+        break;
+      case Hls.ErrorTypes.MEDIA_ERROR:
+        console.error("Media error encountered", data);
+        hls.recoverMediaError();
+        break;
+      default:
+        hls.destroy();
+        console.error("Unrecoverable error encountered", data);
+        break;
+    }
+  }
+});
+
 docId("panel").append(video);
 
 docId("volume").value = video.volume;
@@ -282,6 +302,18 @@ docQuery(".control_play").addEventListener("click", () => {
     docQuery(".control_play img").src = "../../assets/resume.svg";
   }
 });
+
+function minus10Sec() {
+  video.currentTime = Math.max(video.currentTime - 10, 2);
+}
+function plus10Sec() {
+  const newTime = video.currentTime + 10;
+  if (newTime < video.duration) {
+    video.currentTime = newTime;
+  } else {
+    video.currentTime = video.duration - 1;
+  }
+}
 
 function panelMouseEnter() {
   console.log("panelMouseEnter");

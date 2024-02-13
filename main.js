@@ -367,7 +367,7 @@ ipcMain.on("getStream", async (evt, channelId) => {
   if (isStream) {
     store.set(`auto_start.${channelId}.status`, true);
     lib.getLiveById(channelId).then((res) => {
-      const hls = JSON.parse(res.content.livePlaybackJson).media[0].path;
+      const hls = JSON.parse(res.content.livePlaybackJson).media[1].path;
       createPIPWin(hls, channelId);
     });
   }
