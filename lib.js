@@ -229,7 +229,7 @@ async function checkSpace(ct0, auth_token, userId) {
   const options = {
     hostname: "twitter.com",
     port: 443,
-    path: `/i/api/fleets/v2/avatar_content?user_ids=${userId}&only_spaces=true`,
+    path: `/i/api/fleets/v1/avatar_content?user_ids=${userId}&only_spaces=true`,
     method: "GET",
     headers: headers,
   };
