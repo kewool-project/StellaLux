@@ -188,9 +188,11 @@ info.forEach((element, i) => {
   if (element.isStream && !element.isSpace) profile.classList.add("is_stream");
   else if (!element.isStream && element.isSpace)
     profile.classList.add("is_space");
-  const profile_img = document.createElement("img");
-  profile_img.src = element.profile;
-  profile.append(profile_img);
+
+  const profile_img_div = document.createElement("div");
+  profile_img_div.className = "panel_item_profile_image";
+  profile_img_div.style.backgroundImage = `url(${element.profile})`;
+  profile.append(profile_img_div);
   panel_item.append(profile);
 
   const panel_item_info = document.createElement("div");

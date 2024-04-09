@@ -247,11 +247,13 @@ header .header_profile img {
   border-radius: 50%;
   border: 2px solid #686868;
 }
-#panel .panel_column .panel_item .panel_item_profile img {
+#panel .panel_column .panel_item .panel_item_profile .panel_item_profile_image {
   width: 64px;
   height: 64px;
-  flex-shrink: 0;
   border-radius: 50%;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
 }
 #panel .panel_column .panel_item .panel_item_info {
   display: flex;
