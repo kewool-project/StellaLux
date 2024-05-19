@@ -84,7 +84,7 @@ function createPIPWin(url, channelId) {
     opacity: store.get("pip_options")[channelId].opacity,
   });
   streamWin[channelId].pip.setAspectRatio(16 / 9);
-  // streamWin[channelId].pip.setMenu(null);
+  streamWin[channelId].pip.setMenu(null);
   streamWin[channelId].pip.loadURL(
     "file://" +
       path.join(
