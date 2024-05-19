@@ -57,10 +57,41 @@ docQuery(".minimize").addEventListener("click", () => {
   ipcRenderer.send("minimizeMainWin", params.name);
 });
 
-const container = docId("panel");
 let tempArr = [];
 
 store.get("pip_order").forEach((e, i) => {
+  const container = docId("panel");
+  if (!((i + 1) % 6) || (i === store.get("pip_order").length - 1 && i % 6)) {
+    const tab = document.createElement("div");
+    tab.classList.add("panel_tab");
+    tab.classList.add(`panel_tab${Math.floor(i / 6)}`);
+    tab.id = `panel_tab:${Math.floor(i / 6)}`;
+    if (Math.floor(i / 6)) tab.style.display = "none";
+    container.append(tab);
+
+    const tabButton = document.createElement("button");
+    tabButton.classList.add("panel_tab_button");
+    tabButton.id = `panel_tab_button:${Math.floor(i / 6)}`;
+    tabButton.innerText = `${Math.floor(i / 6) + 1}`;
+    if (!Math.floor(i / 6)) tabButton.classList.add("active");
+    tabButton.addEventListener("click", () => {
+      const tabs = document.querySelectorAll(".panel_tab");
+      tabs.forEach((e) => {
+        e.style.display = "none";
+      });
+      tab.style.display = "flex";
+      const tabButtons = document.querySelectorAll(".panel_tab_button");
+      tabButtons.forEach((e) => {
+        e.classList.remove("active");
+      });
+      tabButton.classList.add("active");
+    });
+    docQuery(".panel_tab-header").append(tabButton);
+  }
+});
+
+store.get("pip_order").forEach((e, i) => {
+  const tab = docQuery(`.panel_tab${Math.floor(i / 6)}`);
   const div = document.createElement("div");
   div.id = e;
   div.className = "panel_item";
@@ -72,7 +103,7 @@ store.get("pip_order").forEach((e, i) => {
     tempArr.forEach((e) => {
       panel_column.append(e);
     });
-    container.append(panel_column);
+    tab.append(panel_column);
     tempArr = [];
   }
 });
@@ -278,6 +309,10 @@ ipcRenderer.once("update_downloaded", () => {
 });
 
 let columns = document.querySelectorAll(".panel_item");
+let tabButtons = document.querySelectorAll(".panel_tab_button");
+columns = Array.from(columns);
+tabButtons = Array.from(tabButtons);
+columns.push(...tabButtons);
 let draggingClass = "dragging";
 let dragSource;
 
@@ -315,27 +350,57 @@ function handleDrop(evt) {
   evt.stopPropagation();
 
   if (dragSource !== this) {
-    dragSource.innerHTML = this.innerHTML;
-    this.innerHTML = evt.dataTransfer.getData("text/html");
-    dragSource.id = this.id;
-    this.id = evt.dataTransfer.getData("id");
-    info.forEach((e) => {
-      if (e.name === dragSource.id) {
-        docQuery(`#${dragSource.id} .panel_item_more`).addEventListener(
-          "click",
-          () => {
-            moreInfoEvent(e);
-          },
+    if (this.classList.contains("panel_tab_button")) {
+      const dragSourceTabNumber =
+        dragSource.parentElement.parentElement.id.split(":")[1];
+      const dragOveredTabNumber = this.id.split(":")[1];
+      const tab = docQuery(`.panel_tab${dragOveredTabNumber}`);
+      if (dragOveredTabNumber < dragSourceTabNumber) {
+        const lastItem = tab.lastChild.lastChild;
+        const lastColumn = tab.lastChild;
+        lastColumn.removeChild(lastItem);
+        dragSource.parentElement.prepend(lastItem);
+        lastColumn.append(dragSource);
+      } else if (dragOveredTabNumber > dragSourceTabNumber) {
+        const firstItem = tab.firstChild.firstChild;
+        const firstColumn = tab.firstChild;
+        firstColumn.removeChild(firstItem);
+        const dragSourceTab = dragSource.parentElement.parentElement;
+        dragSourceTab.lastChild.append(firstItem);
+        firstColumn.prepend(dragSource);
+        const columns = Array.from(
+          dragSourceTab.getElementsByClassName("panel_column"),
         );
-      } else if (e.name === this.id) {
-        docQuery(`#${this.id} .panel_item_more`).addEventListener(
-          "click",
-          () => {
-            moreInfoEvent(e);
-          },
-        );
+        columns.forEach((e, i) => {
+          if (e.childElementCount !== 2) {
+            const nextColumn = columns[i + 1];
+            const firstItem = nextColumn.firstChild;
+            nextColumn.removeChild(firstItem);
+            e.append(firstItem);
+          }
+        });
       }
-    });
+    } else {
+      dragSource.innerHTML = this.innerHTML;
+      this.innerHTML = evt.dataTransfer.getData("text/html");
+      dragSource.id = this.id;
+      this.id = evt.dataTransfer.getData("id");
+      info.forEach((e) => {
+        if (e.name === dragSource.id) {
+          const panelItem = docId(dragSource.id);
+          const moreButton = panelItem.querySelector(".panel_item_more");
+          moreButton.addEventListener("click", () => {
+            moreInfoEvent(e);
+          });
+        } else if (e.name === this.id) {
+          const panelItem = docId(this.id);
+          const moreButton = panelItem.querySelector(".panel_item_more");
+          moreButton.addEventListener("click", () => {
+            moreInfoEvent(e);
+          });
+        }
+      });
+    }
   }
 
   evt.preventDefault();

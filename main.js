@@ -25,7 +25,7 @@ let guideWin;
 function createMainWindow() {
   mainWin = new BrowserWindow({
     width: 560,
-    height: 477,
+    height: 494,
     frame: false,
     webPreferences: {
       contextIsolation: false,
@@ -39,7 +39,7 @@ function createMainWindow() {
       y: 12,
     },
   });
-  // mainWin.setMenu(null);
+  mainWin.setMenu(null);
   mainWin.loadURL(
     "file://" +
       path.join(page_dir, `pages/main/index.html?platform=${process.platform}`),
@@ -171,7 +171,7 @@ function createSpaceWin(url, channelId) {
   );
   spaceWin[channelId].pip.setAlwaysOnTop(true, "screen-saver");
   spaceWin[channelId].pip.setVisibleOnAllWorkspaces(true);
-  spaceWin[channelId].pip.openDevTools();
+  // spaceWin[channelId].pip.openDevTools();
 }
 
 function createGuideWin() {
@@ -212,6 +212,14 @@ app.on("ready", () => {
     store.delete("auto_start");
     store.delete("pip_options");
     store.set("3.0.0", true);
+  }
+  if (!store.get("3.2.0")) {
+    store.delete("pip_order");
+    store.delete("auto_start");
+    store.delete("pip_options");
+    store.delete("space_auto_start");
+    store.delete("space_options");
+    store.set("3.2.0", true);
   }
   if (!store.get("pip_order")) {
     store.set("pip_order", config["CHANNEL_ID"]);
@@ -367,7 +375,7 @@ ipcMain.on("getStream", async (evt, channelId) => {
   if (isStream) {
     store.set(`auto_start.${channelId}.status`, true);
     lib.getLiveById(channelId).then((res) => {
-      const hls = JSON.parse(res.content.livePlaybackJson).media[1].path;
+      const hls = JSON.parse(res.content.livePlaybackJson).media[0].path;
       createPIPWin(hls, channelId);
     });
   }
