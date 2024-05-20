@@ -74,6 +74,8 @@ function createPIPWin(url, channelId) {
     webPreferences: {
       contextIsolation: false,
       nodeIntegration: true,
+      webSecurity: false,
+      partition: channelId,
     },
     frame: false,
     resizable: true,
