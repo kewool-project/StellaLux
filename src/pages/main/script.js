@@ -358,9 +358,22 @@ function handleDrop(evt) {
       if (dragOveredTabNumber < dragSourceTabNumber) {
         const lastItem = tab.lastChild.lastChild;
         const lastColumn = tab.lastChild;
+        const dragSourceTab = dragSource.parentElement.parentElement;
+        const firstColumn = dragSourceTab.firstChild;
         lastColumn.removeChild(lastItem);
-        dragSource.parentElement.prepend(lastItem);
         lastColumn.append(dragSource);
+        firstColumn.prepend(lastItem);
+        const columns = Array.from(
+          dragSourceTab.getElementsByClassName("panel_column"),
+        );
+        columns.reverse().forEach((e, i) => {
+          if (e.childElementCount !== 2) {
+            const prevColumn = columns[i + 1];
+            const lastItem = prevColumn.lastChild;
+            prevColumn.removeChild(lastItem);
+            e.prepend(lastItem);
+          }
+        });
       } else if (dragOveredTabNumber > dragSourceTabNumber) {
         const firstItem = tab.firstChild.firstChild;
         const firstColumn = tab.firstChild;
