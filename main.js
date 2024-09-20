@@ -1,6 +1,7 @@
 const electron = require("electron");
 const path = require("path");
-const { app, BrowserWindow, ipcMain, Tray, Menu, screen, shell } = electron;
+const { app, BrowserWindow, ipcMain, Tray, Menu, screen, shell, session } =
+  electron;
 const { autoUpdater } = require("electron-updater");
 const lib = require("./lib.js");
 const config = require("./config.json");
@@ -47,7 +48,6 @@ function createMainWindow() {
   mainWin.on("closed", () => {
     mainWin = null;
   });
-
   // mainWin.webContents.openDevTools();
 }
 
@@ -108,8 +108,19 @@ function createLiveWin(channelId) {
   });
   streamWin[channelId].points.loadURL(
     "https://chzzk.naver.com/live/" + channelId,
+    {
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    },
   );
   streamWin[channelId].points.webContents.setAudioMuted(true);
+  streamWin[channelId].points.webContents.on("did-finish-load", () => {
+    streamWin[channelId].points.webContents.executeJavaScript(
+      `setTimeout(() => {
+        document.querySelector("#layout-body > section > div > main > div.live_information_contents__ms0SV > div.live_information_player__uFFcH > div.live_information_video_dimmed__Hrmtd > div > div:nth-child(4) > button").click();
+      }, 3000);`,
+    );
+  });
 }
 
 function createChatWin(channelId, type) {
@@ -135,10 +146,7 @@ function createChatWin(channelId, type) {
     skipTaskbar: true,
   });
   chatWin[channelId].setMenu(null);
-  chatWin[channelId].loadURL(
-    "file://" +
-      path.join(page_dir, `pages/chat/index.html?channelId=${channelId}`),
-  );
+  chatWin[channelId].loadURL(`https://chzzk.naver.com/live/${channelId}/chat`);
   chatWin[channelId].setAlwaysOnTop(true, "screen-saver");
   chatWin[channelId].setVisibleOnAllWorkspaces(true);
 }
@@ -209,6 +217,7 @@ app.on("ready", () => {
   // store.delete("pip_options"); //test
   // store.delete("space_auto_start"); //test
   // store.delete("space_options"); //test
+
   if (!store.get("3.0.0")) {
     store.delete("pip_order");
     store.delete("auto_start");
@@ -303,6 +312,25 @@ app.on("ready", () => {
     });
     store.set("space_options", space_options);
   }
+  if (!store.get("chzzk_session")) {
+    store.set("chzzk_session", "");
+  } else {
+    store
+      .get("chzzk_session")
+      .split(";")
+      .forEach((e) => {
+        if (e === "") return;
+        const cookie = {
+          url: "https://chzzk.naver.com",
+          name: e.split("=")[0],
+          value: e.split("=")[1],
+          domain: ".naver.com",
+          secure: true,
+        };
+        session.defaultSession.cookies.set(cookie);
+      });
+  }
+
   createMainWindow();
   createBackground();
   trayIcon =
@@ -361,6 +389,25 @@ ipcMain.on("getChannelInfo", async (evt) => {
   backWin.webContents.send("login");
   autoUpdater.checkForUpdates();
   evt.returnValue = info;
+});
+
+ipcMain.on("login", async (evt) => {
+  store.set("chzzk_session", await lib.loginAndGetSession());
+  mainWin.webContents.reload();
+});
+
+ipcMain.on("logout", () => {
+  store.delete("chzzk_session");
+  lib.logout();
+  mainWin.webContents.reload();
+});
+
+ipcMain.on("getUserProfile", async (evt) => {
+  const user = await lib.getMyData(store.get("chzzk_session"));
+  evt.returnValue = {
+    name: user?.nickname,
+    profile: user?.profileImageUrl,
+  };
 });
 
 ipcMain.on("getThumnail", async (evt, channelId) => {

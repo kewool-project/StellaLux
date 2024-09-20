@@ -1,6 +1,6 @@
 {
   "name": "stella_lux",
-  "version": "3.2.2",
+  "version": "3.2.3",
   "description": "",
   "main": "main.js",
   "scripts": {
@@ -57,7 +57,7 @@
       "target": [
         "nsis"
       ],
-      "icon": "./src/assets/icon3.png"
+      "icon": "./src/assets/icon.ico"
     },
     "mac": {
       "target": {
