@@ -135,7 +135,7 @@ function createChatWin(channelId, type) {
       type === "stream"
         ? store.get("pip_options")[channelId].location.y
         : store.get("space_options")[channelId].location.y,
-    width: 350,
+    width: 380,
     height: store.get("pip_options")[channelId].size.height,
     webPreferences: {
       webviewTag: true,
@@ -146,7 +146,9 @@ function createChatWin(channelId, type) {
     skipTaskbar: true,
   });
   chatWin[channelId].setMenu(null);
-  chatWin[channelId].loadURL(`https://chzzk.naver.com/live/${channelId}/chat`);
+  chatWin[channelId].loadURL(
+    "file://" + path.join(page_dir, `pages/chat/index.html?name=${channelId}`),
+  );
   chatWin[channelId].setAlwaysOnTop(true, "screen-saver");
   chatWin[channelId].setVisibleOnAllWorkspaces(true);
 }
@@ -315,20 +317,22 @@ app.on("ready", () => {
   if (!store.get("chzzk_session")) {
     store.set("chzzk_session", "");
   } else {
-    store
-      .get("chzzk_session")
-      .split(";")
-      .forEach((e) => {
-        if (e === "") return;
-        const cookie = {
-          url: "https://chzzk.naver.com",
-          name: e.split("=")[0],
-          value: e.split("=")[1],
-          domain: ".naver.com",
-          secure: true,
-        };
-        session.defaultSession.cookies.set(cookie);
-      });
+    try {
+      store
+        .get("chzzk_session")
+        .split(";")
+        .forEach((e) => {
+          if (e === "") return;
+          const cookie = {
+            url: "https://chzzk.naver.com",
+            name: e.split("=")[0],
+            value: e.split("=")[1],
+            domain: ".naver.com",
+            secure: true,
+          };
+          session.defaultSession.cookies.set(cookie);
+        });
+    } catch {}
   }
 
   createMainWindow();

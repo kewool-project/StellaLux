@@ -3,4 +3,4 @@ const params = new Proxy(new URLSearchParams(window.location.search), {
 });
 
 document.getElementById("chat").src =
-  `https://www.twitch.tv/embed/${params.name}/chat?parent=localhost`;
+  `https://chzzk.naver.com/live/${params.name}/chat`;

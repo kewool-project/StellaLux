@@ -14,5 +14,6 @@ body {
   top: 0;
   left: 0;
   width: 90%;
-  height: 52px;
+  height: 44px;
+  overflow: hidden;
 }
