@@ -214,11 +214,11 @@ if (!lock) {
 
 app.on("ready", () => {
   store.set("app_start", false);
-  store.delete("pip_order"); //test
-  store.delete("auto_start"); //test
-  store.delete("pip_options"); //test
-  store.delete("space_auto_start"); //test
-  store.delete("space_options"); //test
+  // store.delete("pip_order"); //test
+  // store.delete("auto_start"); //test
+  // store.delete("pip_options"); //test
+  // store.delete("space_auto_start"); //test
+  // store.delete("space_options"); //test
 
   if (!store.get("3.0.0")) {
     store.delete("pip_order");
