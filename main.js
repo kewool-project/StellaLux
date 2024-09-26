@@ -214,11 +214,11 @@ if (!lock) {
 
 app.on("ready", () => {
   store.set("app_start", false);
-  // store.delete("pip_order"); //test
-  // store.delete("auto_start"); //test
-  // store.delete("pip_options"); //test
-  // store.delete("space_auto_start"); //test
-  // store.delete("space_options"); //test
+  store.delete("pip_order"); //test
+  store.delete("auto_start"); //test
+  store.delete("pip_options"); //test
+  store.delete("space_auto_start"); //test
+  store.delete("space_options"); //test
 
   if (!store.get("3.0.0")) {
     store.delete("pip_order");
@@ -366,7 +366,7 @@ ipcMain.on("getChannelInfo", async (evt) => {
       const user = await lib.getUserById(e);
       let stream = null;
       if (user.content.openLive) {
-        stream = await lib.getLiveById(e);
+        stream = await lib.getLiveById(e, store.get("chzzk_session") ?? "");
       }
       const lastStreamDate = await lib.getLastStreamDate(e);
       let isSpace = null;
@@ -408,6 +408,7 @@ ipcMain.on("logout", () => {
 
 ipcMain.on("getUserProfile", async (evt) => {
   const user = await lib.getMyData(store.get("chzzk_session"));
+  if (!user) store.set("chzzk_session", "");
   evt.returnValue = {
     name: user?.nickname,
     profile: user?.profileImageUrl,
@@ -415,7 +416,9 @@ ipcMain.on("getUserProfile", async (evt) => {
 });
 
 ipcMain.on("getThumnail", async (evt, channelId) => {
-  const thumnail = (await lib.getLiveById(channelId)).content.liveImageUrl;
+  const thumnail = (
+    await lib.getLiveById(channelId, store.get("chzzk_session") ?? "")
+  ).content.liveImageUrl;
   evt.returnValue = thumnail;
 });
 
@@ -427,9 +430,11 @@ ipcMain.on("getStream", async (evt, channelId) => {
   const isStream = (await lib.getUserById(channelId)).content.openLive;
   if (isStream) {
     store.set(`auto_start.${channelId}.status`, true);
-    lib.getLiveById(channelId).then((res) => {
-      const hls = JSON.parse(res.content.livePlaybackJson).media[0].path;
-      createPIPWin(hls, channelId);
+    lib.getLiveById(channelId, store.get("chzzk_session") ?? "").then((res) => {
+      if (res.content.livePlaybackJson) {
+        const hls = JSON.parse(res.content.livePlaybackJson).media[0].path;
+        createPIPWin(hls, channelId);
+      }
     });
   }
 });

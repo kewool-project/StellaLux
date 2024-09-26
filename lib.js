@@ -25,10 +25,17 @@ async function loginAndGetSession(id = "", pw = "") {
         }
       }
     });
+  const myData = getMyData(sessionCookie);
+  if (!myData.nickname) sessionCookie = "";
   if (!sessionCookie) {
     loginWin.loadURL(
       "https://nid.naver.com/nidlogin.login?url=https%3A%2F%2Fchzzk.naver.com%2F",
     );
+    loginWin.webContents.on("did-finish-load", () => {
+      loginWin.webContents.executeJavaScript(`
+        document.getElementById("keep").checked = true;
+      `);
+    });
     loginWin.show();
     await new Promise((resolve) => {
       loginWin.webContents.on("did-navigate", async (event, url) => {
@@ -127,12 +134,17 @@ function getUserById(channelId) {
   });
 }
 
-function getLiveById(channelId) {
+function getLiveById(channelId, sessionCookie) {
+  const headers = {
+    cookie: sessionCookie ?? "",
+  };
+
   const options = {
     hostname: "api.chzzk.naver.com",
     port: 443,
     path: `/service/v2/channels/${channelId}/live-detail`,
     method: "GET",
+    headers: headers,
   };
 
   return new Promise((resolve, reject) => {
