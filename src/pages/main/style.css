@@ -233,6 +233,7 @@ header .header_profile img {
   user-select: all;
 }
 #panel .panel_column .panel_item {
+  max-width: 260px;
   display: flex;
   position: relative;
   padding: 16px;

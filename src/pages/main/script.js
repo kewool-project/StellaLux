@@ -106,6 +106,14 @@ store.get("pip_order").forEach((e, i) => {
     tab.append(panel_column);
     tempArr = [];
   }
+  if (i === store.get("pip_order").length - 1 && !(i % 2)) {
+    const panel_column = document.createElement("div");
+    panel_column.className = "panel_column last";
+    tempArr.forEach((e) => {
+      panel_column.append(e);
+    });
+    tab.append(panel_column);
+  }
 });
 
 docQuery(".header_setting").addEventListener("click", () => {

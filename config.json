@@ -1,5 +1,6 @@
 {
     "CHANNEL_ID": [
+      "b5ed5db484d04faf4d150aedd362f34b",
       "45e71a76e949e16a34764deb962f9d9f",
       "f722959d1b8e651bd56209b343932c01",
       "a6c4ddb09cdb160478996007bff35296",
@@ -21,7 +22,8 @@
       "64d76089fba26b180d9c9e48a32600d9": "1787748745872113664",
       "516937b5f85cbf2249ce31b0ad046b0f": "1787747254285336576",
       "4d812b586ff63f8a2946e64fa860bbf5": "1787757306815696896",
-      "8fd39bb8de623317de90654718638b10": "1787769473182879744"
+      "8fd39bb8de623317de90654718638b10": "1787769473182879744",
+      "b5ed5db484d04faf4d150aedd362f34b": "722117332303110144"
     },
     "TOOLTIP_NAME": "StellaLux",
     "RELEASE_URL": "https://github.com/kewool-project/StellaLux/releases"
