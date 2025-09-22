@@ -219,6 +219,56 @@ app.on("ready", () => {
   // store.delete("pip_options"); //test
   // store.delete("space_auto_start"); //test
   // store.delete("space_options"); //test
+  if (!store.get("3.2.8") && store.get("pip_order")) {
+    const order = store.get("pip_order");
+    if (!order.includes("36ddb9bb4f17593b60f1b63cec86611d")) {
+      order.push("36ddb9bb4f17593b60f1b63cec86611d");
+      store.set("pip_order", order);
+      const autoStart = store.get("auto_start");
+      autoStart["36ddb9bb4f17593b60f1b63cec86611d"] = {
+        enabled: false,
+        closed: false,
+        status: false,
+      };
+      store.set("auto_start", autoStart);
+      const pipOptions = store.get("pip_options");
+      pipOptions["36ddb9bb4f17593b60f1b63cec86611d"] = {
+        location: {
+          x: 0,
+          y: 0,
+        },
+        size: {
+          width: 480,
+          height: 270,
+        },
+        volume: 0.5,
+        opacity: 1,
+      };
+      store.set("pip_options", pipOptions);
+      const spaceAutoStart = store.get("space_auto_start");
+      spaceAutoStart["36ddb9bb4f17593b60f1b63cec86611d"] = {
+        enabled: false,
+        closed: false,
+        status: false,
+      };
+      store.set("space_auto_start", spaceAutoStart);
+      const spaceOptions = store.get("space_options");
+      spaceOptions["36ddb9bb4f17593b60f1b63cec86611d"] = {
+        location: {
+          x: 0,
+          y: 0,
+        },
+        size: {
+          width: 240,
+          height: 135,
+        },
+        volume: 0.5,
+        opacity: 1,
+      };
+      store.set("space_options", spaceOptions);
+    }
+    store.set("3.2.8", true);
+  }
   if (!store.get("3.2.7") && store.get("pip_order")) {
     console.log("update 3.2.7");
     const order = store.get("pip_order");
