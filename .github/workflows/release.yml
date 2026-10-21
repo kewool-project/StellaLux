@@ -5,12 +5,20 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing version tag to build and publish (blank = build only)"
+        required: false
+        type: string
+
+env:
+  RELEASE_TAG: ${{ inputs.tag || (github.ref_type == 'tag' && github.ref_name) || '' }}
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.tag || github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -34,6 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.tag || github.ref }}
           persist-credentials: false
 
       - uses: actions/setup-node@v7
@@ -44,7 +53,7 @@ jobs:
       - name: Check release version
         run: |
           node --check main.js
-          node -e 'const v = require("./package.json").version; if (process.env.GITHUB_REF_TYPE === "tag" && process.env.GITHUB_REF_NAME !== `v${v}`) throw new Error(`Tag must be v${v}`);'
+          node -e 'const v = require("./package.json").version; if (process.env.RELEASE_TAG && process.env.RELEASE_TAG !== `v${v}`) throw new Error(`Tag must be v${v}`);'
 
       - name: Install dependencies
         run: |
@@ -74,7 +83,7 @@ jobs:
   publish:
     name: Publish GitHub Release
     needs: build
-    if: startsWith(github.ref, 'refs/tags/')
+    if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.tag != '')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -86,10 +95,20 @@ jobs:
           merge-multiple: true
           path: release-assets
 
+      - name: Match GitHub release filenames
+        shell: bash
+        run: |
+          for file in release-assets/*; do
+            normalized="${file// /-}"
+            if [ "$file" != "$normalized" ]; then
+              mv -- "$file" "$normalized"
+            fi
+          done
+
       - name: Check release files
         shell: bash
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          version="${RELEASE_TAG#v}"
           for file in \
             "StellaLux-Setup-${version}.exe" \
             "StellaLux-Setup-${version}.exe.blockmap" \
@@ -107,14 +126,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          if gh release view "$GITHUB_REF_NAME" --json isDraft > release.json; then
+          if gh release view "$RELEASE_TAG" --json isDraft > release.json; then
             if ! jq -e '.isDraft' release.json > /dev/null; then
               echo "Release is already published; refusing to replace its files."
               exit 1
             fi
           else
-            gh release create "$GITHUB_REF_NAME" --draft --verify-tag \
-              --title "$GITHUB_REF_NAME" --generate-notes
+            gh release create "$RELEASE_TAG" --draft --verify-tag \
+              --title "$RELEASE_TAG" --generate-notes
           fi
-          gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber
-          gh release edit "$GITHUB_REF_NAME" --draft=false --latest
+          gh release upload "$RELEASE_TAG" release-assets/* --clobber
+          gh release edit "$RELEASE_TAG" --draft=false --latest

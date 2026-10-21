@@ -14,6 +14,8 @@ git push origin v3.2.9
 
 Actions의 **Build and release → Run workflow**에서 브랜치를 선택하면
 릴리스를 공개하지 않고 빌드 결과만 확인할 수 있습니다.
+기존 태그의 빌드와 배포를 다시 실행하려면 `master` 브랜치를 선택하고
+`tag`에 해당 버전 태그를 입력합니다. 이미 공개된 릴리스의 파일은 덮어쓰지 않습니다.
 Release 업로드에는 저장소의 기본 `GITHUB_TOKEN`을 사용합니다.
 CI 빌드에는 코드 서명 인증서가 설정되어 있지 않습니다.
 
