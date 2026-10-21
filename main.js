@@ -412,6 +412,41 @@ app.on("ready", () => {
     });
     store.set("space_options", space_options);
   }
+  if (!store.get("3.2.9")) {
+    const order = store.get("pip_order");
+    const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+    config["CHANNEL_ID"].forEach((channelId) => {
+      if (!order.includes(channelId)) order.push(channelId);
+      ["auto_start", "space_auto_start"].forEach((key) => {
+        if (!store.get(`${key}.${channelId}`)) {
+          store.set(`${key}.${channelId}`, {
+            enabled: false,
+            closed: false,
+            status: false,
+          });
+        }
+      });
+      ["pip_options", "space_options"].forEach((key) => {
+        if (!store.get(`${key}.${channelId}`)) {
+          const isPip = key === "pip_options";
+          store.set(`${key}.${channelId}`, {
+            location: {
+              x: width - (isPip ? 530 : 290),
+              y: height - (isPip ? 320 : 185),
+            },
+            size: {
+              width: isPip ? 480 : 240,
+              height: isPip ? 270 : 135,
+            },
+            volume: 0.5,
+            opacity: 1,
+          });
+        }
+      });
+    });
+    store.set("pip_order", order);
+    store.set("3.2.9", true);
+  }
   if (!store.get("chzzk_session")) {
     store.set("chzzk_session", "");
   } else {
