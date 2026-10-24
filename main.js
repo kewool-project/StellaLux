@@ -18,6 +18,7 @@ let mainWin;
 let tray;
 let backWin;
 let streamWin = {};
+const streamRequests = new Map();
 let spaceWin = {};
 let chatWin = {};
 let trayIcon;
@@ -97,7 +98,25 @@ function createPIPWin(url, channelId) {
   streamWin[channelId].pip.setAlwaysOnTop(true, "screen-saver");
   streamWin[channelId].pip.setVisibleOnAllWorkspaces(true);
 
+  const windows = streamWin[channelId];
+  windows.pip.on("closed", () => {
+    if (streamWin[channelId] === windows) closeStream(channelId, true);
+  });
+
   createLiveWin(channelId);
+}
+
+function closeStream(channelId, closed) {
+  const windows = streamWin[channelId];
+  const chat = chatWin[channelId];
+  streamRequests.delete(channelId);
+  streamWin[channelId] = null;
+  chatWin[channelId] = null;
+  store.set(`auto_start.${channelId}.status`, false);
+  store.set(`auto_start.${channelId}.closed`, closed);
+  for (const window of [windows?.pip, windows?.points, chat]) {
+    if (window && !window.isDestroyed()) window.close();
+  }
 }
 
 function createLiveWin(channelId) {
@@ -114,8 +133,10 @@ function createLiveWin(channelId) {
     },
   );
   streamWin[channelId].points.webContents.setAudioMuted(true);
-  streamWin[channelId].points.webContents.on("did-finish-load", () => {
-    streamWin[channelId].points.webContents.executeJavaScript(
+  const points = streamWin[channelId].points;
+  points.webContents.on("did-finish-load", () => {
+    if (points.isDestroyed()) return;
+    points.webContents.executeJavaScript(
       `setTimeout(() => {
         document.querySelector("#layout-body > section > div > main > div.live_information_contents__ms0SV > div.live_information_player__uFFcH > div.live_information_video_dimmed__Hrmtd > div > div:nth-child(4) > button").click();
       }, 3000);`,
@@ -214,110 +235,6 @@ if (!lock) {
 
 app.on("ready", () => {
   store.set("app_start", false);
-  // store.delete("pip_order"); //test
-  // store.delete("auto_start"); //test
-  // store.delete("pip_options"); //test
-  // store.delete("space_auto_start"); //test
-  // store.delete("space_options"); //test
-  if (!store.get("3.2.8") && store.get("pip_order")) {
-    const order = store.get("pip_order");
-    if (!order.includes("36ddb9bb4f17593b60f1b63cec86611d")) {
-      order.push("36ddb9bb4f17593b60f1b63cec86611d");
-      store.set("pip_order", order);
-      const autoStart = store.get("auto_start");
-      autoStart["36ddb9bb4f17593b60f1b63cec86611d"] = {
-        enabled: false,
-        closed: false,
-        status: false,
-      };
-      store.set("auto_start", autoStart);
-      const pipOptions = store.get("pip_options");
-      pipOptions["36ddb9bb4f17593b60f1b63cec86611d"] = {
-        location: {
-          x: 0,
-          y: 0,
-        },
-        size: {
-          width: 480,
-          height: 270,
-        },
-        volume: 0.5,
-        opacity: 1,
-      };
-      store.set("pip_options", pipOptions);
-      const spaceAutoStart = store.get("space_auto_start");
-      spaceAutoStart["36ddb9bb4f17593b60f1b63cec86611d"] = {
-        enabled: false,
-        closed: false,
-        status: false,
-      };
-      store.set("space_auto_start", spaceAutoStart);
-      const spaceOptions = store.get("space_options");
-      spaceOptions["36ddb9bb4f17593b60f1b63cec86611d"] = {
-        location: {
-          x: 0,
-          y: 0,
-        },
-        size: {
-          width: 240,
-          height: 135,
-        },
-        volume: 0.5,
-        opacity: 1,
-      };
-      store.set("space_options", spaceOptions);
-    }
-    store.set("3.2.8", true);
-  }
-  if (!store.get("3.2.7") && store.get("pip_order")) {
-    console.log("update 3.2.7");
-    const order = store.get("pip_order");
-    order.unshift("b5ed5db484d04faf4d150aedd362f34b");
-    store.set("pip_order", order);
-    const autoStart = store.get("auto_start");
-    autoStart["b5ed5db484d04faf4d150aedd362f34b"] = {
-      enabled: false,
-      closed: false,
-      status: false,
-    };
-    store.set("auto_start", autoStart);
-    const pipOptions = store.get("pip_options");
-    pipOptions["b5ed5db484d04faf4d150aedd362f34b"] = {
-      location: {
-        x: 0,
-        y: 0,
-      },
-      size: {
-        width: 480,
-        height: 270,
-      },
-      volume: 0.5,
-      opacity: 1,
-    };
-    store.set("pip_options", pipOptions);
-    const spaceAutoStart = store.get("space_auto_start");
-    spaceAutoStart["b5ed5db484d04faf4d150aedd362f34b"] = {
-      enabled: false,
-      closed: false,
-      status: false,
-    };
-    store.set("space_auto_start", spaceAutoStart);
-    const spaceOptions = store.get("space_options");
-    spaceOptions["b5ed5db484d04faf4d150aedd362f34b"] = {
-      location: {
-        x: 0,
-        y: 0,
-      },
-      size: {
-        width: 240,
-        height: 135,
-      },
-      volume: 0.5,
-      opacity: 1,
-    };
-    store.set("space_options", spaceOptions);
-    store.set("3.2.7", true);
-  }
   if (!store.get("3.0.0")) {
     store.delete("pip_order");
     store.delete("auto_start");
@@ -332,121 +249,46 @@ app.on("ready", () => {
     store.delete("space_options");
     store.set("3.2.0", true);
   }
-  if (!store.get("pip_order")) {
-    store.set("pip_order", config["CHANNEL_ID"]);
+  const savedOrder = store.get("pip_order");
+  const order = [...new Set(savedOrder ?? [])];
+  config["CHANNEL_ID"].forEach((channelId) => {
+    if (!order.includes(channelId)) order.push(channelId);
+  });
+  store.set("pip_order", order);
+  if (!savedOrder) {
     app.setLoginItemSettings({
       openAtLogin: true,
     });
   }
-  if (!store.get("auto_start")) {
-    const order = store.get("pip_order");
-    let autoStart = {};
-    order.forEach((e) => {
-      autoStart[e] = {};
-      autoStart[e].enabled = false;
-      autoStart[e].closed = false;
-      autoStart[e].status = false;
-    });
-    store.set("auto_start", autoStart);
-  } else {
-    const order = store.get("pip_order");
-    order.forEach((e) => {
-      store.set(`auto_start.${e}.closed`, false);
-      store.set(`auto_start.${e}.status`, false);
-    });
-  }
-  if (!store.get("space_auto_start")) {
-    const order = store.get("pip_order");
-    let spaceAutoStart = {};
-    order.forEach((e) => {
-      spaceAutoStart[e] = {};
-      spaceAutoStart[e].enabled = false;
-      spaceAutoStart[e].closed = false;
-      spaceAutoStart[e].status = false;
-    });
-    store.set("space_auto_start", spaceAutoStart);
-  } else {
-    const order = store.get("pip_order");
-    order.forEach((e) => {
-      store.set(`space_auto_start.${e}.closed`, false);
-      store.set(`space_auto_start.${e}.status`, false);
-    });
-  }
-  if (!store.get("pip_options")) {
-    const order = store.get("pip_order");
-    const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-    let pip_options = {};
-    order.forEach((e) => {
-      pip_options[e] = {
-        location: {
-          x: width - 530,
-          y: height - 320,
-        },
-        size: {
-          width: 480,
-          height: 270,
-        },
-        volume: 0.5,
-        opacity: 1,
-      };
-    });
-    store.set("pip_options", pip_options);
-  }
-  if (!store.get("space_options")) {
-    const order = store.get("pip_order");
-    const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-    let space_options = {};
-    order.forEach((e) => {
-      space_options[e] = {
-        location: {
-          x: width - 290,
-          y: height - 185,
-        },
-        size: {
-          width: 240,
-          height: 135,
-        },
-        volume: 0.5,
-        opacity: 1,
-      };
-    });
-    store.set("space_options", space_options);
-  }
-  if (!store.get("3.2.9")) {
-    const order = store.get("pip_order");
-    const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-    config["CHANNEL_ID"].forEach((channelId) => {
-      if (!order.includes(channelId)) order.push(channelId);
-      ["auto_start", "space_auto_start"].forEach((key) => {
-        if (!store.get(`${key}.${channelId}`)) {
-          store.set(`${key}.${channelId}`, {
-            enabled: false,
-            closed: false,
-            status: false,
-          });
-        }
-      });
-      ["pip_options", "space_options"].forEach((key) => {
-        if (!store.get(`${key}.${channelId}`)) {
-          const isPip = key === "pip_options";
-          store.set(`${key}.${channelId}`, {
-            location: {
-              x: width - (isPip ? 530 : 290),
-              y: height - (isPip ? 320 : 185),
-            },
-            size: {
-              width: isPip ? 480 : 240,
-              height: isPip ? 270 : 135,
-            },
-            volume: 0.5,
-            opacity: 1,
-          });
-        }
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  order.forEach((channelId) => {
+    ["auto_start", "space_auto_start"].forEach((key) => {
+      const settings = store.get(`${key}.${channelId}`);
+      store.set(`${key}.${channelId}`, {
+        ...settings,
+        enabled: settings?.enabled ?? false,
+        closed: false,
+        status: false,
       });
     });
-    store.set("pip_order", order);
-    store.set("3.2.9", true);
-  }
+    ["pip_options", "space_options"].forEach((key) => {
+      if (!store.get(`${key}.${channelId}`)) {
+        const isPip = key === "pip_options";
+        store.set(`${key}.${channelId}`, {
+          location: {
+            x: width - (isPip ? 530 : 290),
+            y: height - (isPip ? 320 : 185),
+          },
+          size: {
+            width: isPip ? 480 : 240,
+            height: isPip ? 270 : 135,
+          },
+          volume: 0.5,
+          opacity: 1,
+        });
+      }
+    });
+  });
   if (!store.get("chzzk_session")) {
     store.set("chzzk_session", "");
   } else {
@@ -556,29 +398,52 @@ ipcMain.on("getThumnail", async (evt, channelId) => {
 });
 
 ipcMain.on("getStream", async (evt, channelId) => {
-  if (streamWin[channelId]?.pip || store.get("auto_start")[channelId].status) {
-    streamWin[channelId].pip.focus();
+  const pip = streamWin[channelId]?.pip;
+  if (pip && !pip.isDestroyed()) {
+    pip.focus();
     return;
   }
-  const isStream = (await lib.getUserById(channelId)).content.openLive;
-  if (isStream) {
-    store.set(`auto_start.${channelId}.status`, true);
-    lib.getLiveById(channelId, store.get("chzzk_session") ?? "").then((res) => {
-      if (res.content.livePlaybackJson) {
-        const hls = JSON.parse(res.content.livePlaybackJson).media[0].path;
-        createPIPWin(hls, channelId);
-      }
-    });
+  if (streamRequests.has(channelId)) return;
+  const request = {};
+  streamRequests.set(channelId, request);
+  store.set(`auto_start.${channelId}.status`, true);
+  try {
+    const user = await lib.getUserById(channelId);
+    if (streamRequests.get(channelId) !== request || !user.content.openLive)
+      return;
+    const res = await lib.getLiveById(
+      channelId,
+      store.get("chzzk_session") ?? "",
+    );
+    if (streamRequests.get(channelId) !== request) return;
+    const playback = res.content.livePlaybackJson;
+    const hls = playback && JSON.parse(playback).media?.[0]?.path;
+    if (hls) createPIPWin(hls, channelId);
+  } catch (error) {
+    console.error("Failed to open stream", channelId, error);
+    if (streamRequests.get(channelId) === request)
+      closeStream(channelId, false);
+  } finally {
+    if (streamRequests.get(channelId) === request) {
+      streamRequests.delete(channelId);
+      const window = streamWin[channelId]?.pip;
+      store.set(
+        `auto_start.${channelId}.status`,
+        Boolean(window && !window.isDestroyed()),
+      );
+    }
   }
 });
 
 ipcMain.on("movePIP", (evt, arg) => {
-  const currentPostion = streamWin[arg.name].pip.getPosition();
+  const pip = streamWin[arg.name]?.pip;
+  if (!pip || pip.isDestroyed()) return;
+  const currentPostion = pip.getPosition();
   const newPosition = {
     x: currentPostion[0] + arg.x,
     y: currentPostion[1] + arg.y,
   };
-  streamWin[arg.name].pip.setBounds({
+  pip.setBounds({
     x: newPosition.x,
     y: newPosition.y,
     width: store.get("pip_options")[arg.name].size.width,
@@ -593,7 +458,9 @@ ipcMain.on("resizePIP", (evt, arg) => {
 });
 
 ipcMain.on("changeOpacity", (evt, name) => {
-  streamWin[name].pip.setOpacity(store.get(`pip_options.${name}.opacity`));
+  const pip = streamWin[name]?.pip;
+  if (pip && !pip.isDestroyed())
+    pip.setOpacity(store.get(`pip_options.${name}.opacity`));
 });
 
 ipcMain.on("openChat", (evt, name, type) => {
@@ -607,40 +474,20 @@ ipcMain.on("openChat", (evt, name, type) => {
 
 ipcMain.on("fixedPIP", (evt, fixed, option) => {
   const pip = BrowserWindow.fromWebContents(evt.sender);
+  if (!pip || pip.isDestroyed()) return;
   pip.resizable = !fixed;
   pip.setIgnoreMouseEvents(fixed, option);
 });
 
 ipcMain.on("closePIP", (evt, name) => {
-  streamWin[name].pip.close();
-  streamWin[name].pip = null;
-  streamWin[name].points.close();
-  streamWin[name].points = null;
-  if (chatWin[name]) {
-    chatWin[name].close();
-    chatWin[name] = null;
-  }
-  streamWin[name] = null;
-  store.set(`auto_start.${name}.status`, false);
-  store.set(`auto_start.${name}.closed`, true);
+  if (evt.sender && evt.sender !== streamWin[name]?.pip?.webContents) return;
+  closeStream(name, true);
 });
 
 ipcMain.on("closeAllPIP", () => {
   const order = store.get("pip_order");
   order.forEach((e) => {
-    if (streamWin[e]?.pip) {
-      streamWin[e].pip.close();
-      streamWin[e].pip = null;
-      streamWin[e].points.close();
-      streamWin[e].points = null;
-      if (chatWin[e]) {
-        chatWin[e].close();
-        chatWin[e] = null;
-      }
-      streamWin[e] = null;
-      store.set(`auto_start.${e}.status`, false);
-      store.set(`auto_start.${e}.closed`, true);
-    }
+    if (streamWin[e] || streamRequests.has(e)) closeStream(e, true);
   });
 });
 
@@ -650,19 +497,15 @@ ipcMain.on("isStreamOff", async (evt, name) => {
 });
 
 ipcMain.on("isStreamOffWhileOn", async (evt, channelId) => {
-  const isStream = (await lib.getUserById(channelId)).content.openLive;
-  if (!isStream) {
-    streamWin[channelId].pip.close();
-    streamWin[channelId].pip = null;
-    streamWin[channelId].points.close();
-    streamWin[channelId].points = null;
-    if (chatWin[channelId]) {
-      chatWin[channelId].close();
-      chatWin[channelId] = null;
-    }
-    streamWin[channelId] = null;
-    store.set(`auto_start.${channelId}.status`, false);
-    store.set(`auto_start.${channelId}.closed`, false);
+  const windows = streamWin[channelId];
+  if (!windows?.pip || windows.pip.isDestroyed()) return;
+  if (evt.sender && evt.sender !== windows.pip.webContents) return;
+  try {
+    const isStream = (await lib.getUserById(channelId)).content.openLive;
+    if (!isStream && streamWin[channelId] === windows)
+      closeStream(channelId, false);
+  } catch (error) {
+    console.error("Failed to check stream", channelId, error);
   }
 });
 

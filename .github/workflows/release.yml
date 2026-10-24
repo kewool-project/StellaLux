@@ -60,6 +60,9 @@ jobs:
           npm install --global yarn@1.22.22
           yarn install --frozen-lockfile --non-interactive
 
+      - name: Run regression tests
+        run: yarn test
+
       - name: Build installers and update files
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"

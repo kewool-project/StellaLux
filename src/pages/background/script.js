@@ -5,6 +5,7 @@ const store = new Store();
 let getStream;
 
 ipcRenderer.on("login", () => {
+  clearInterval(getStream);
   getStream = setInterval(() => {
     const auto_start = store.get("auto_start");
     const space_auto_start = store.get("space_auto_start");
